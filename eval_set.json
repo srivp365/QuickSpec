@@ -1,0 +1,162 @@
+[
+  {
+    "question": "How many processor cores does the RP2040 have and what type?",
+    "expected_answer": "Two Cortex M0+ processor cores",
+    "source_doc": "RP2040-datasheet.pdf",
+    "chunk_ids": [
+      328
+    ],
+    "relevant_chunk_ids": [
+      64
+    ]
+  },
+  {
+    "question": "What is the maximum clock speed of the RP2040 at standard voltage?",
+    "expected_answer": "133MHz (or 200MHz at 1.15V)",
+    "source_doc": "RP2040-datasheet.pdf",
+    "chunk_ids": [
+      328
+    ],
+    "relevant_chunk_ids": [
+      64
+    ]
+  },
+  {
+    "question": "How much embedded SRAM does the RP2040 have?",
+    "expected_answer": "264kB in 6 banks",
+    "source_doc": "RP2040-datasheet.pdf",
+    "chunk_ids": [
+      328
+    ],
+    "relevant_chunk_ids": [
+      211
+    ]
+  },
+  {
+    "question": "How many multifunction GPIO pins does the RP2040 have?",
+    "expected_answer": "30",
+    "source_doc": "RP2040-datasheet.pdf",
+    "chunk_ids": [
+      328
+    ],
+    "relevant_chunk_ids": [
+      63
+    ]
+  },
+  {
+    "question": "How many dedicated IO pins does the RP2040 have for SPI Flash?",
+    "expected_answer": "6, supporting XIP",
+    "source_doc": "RP2040-datasheet.pdf",
+    "chunk_ids": [
+      328
+    ],
+    "relevant_chunk_ids": [
+      64
+    ]
+  },
+  {
+    "question": "What are the ADC specs on the RP2040?",
+    "expected_answer": "4 channel ADC with internal temperature sensor, 500ksps, 12-bit conversion",
+    "source_doc": "RP2040-datasheet.pdf",
+    "chunk_ids": [
+      328
+    ],
+    "relevant_chunk_ids": [
+      64,
+      745
+    ]
+  },
+  {
+    "question": "What USB standard does the RP2040 support?",
+    "expected_answer": "USB 1.1 Host/Device",
+    "source_doc": "RP2040-datasheet.pdf",
+    "chunk_ids": [
+      328
+    ],
+    "relevant_chunk_ids": [
+      64
+    ]
+  },
+  {
+    "question": "What series resistor is required on the USB_DM and USB_DP pins?",
+    "expected_answer": "27 ohm series termination resistor on each pin",
+    "source_doc": "RP2040-datasheet.pdf",
+    "chunk_ids": [
+      330
+    ],
+    "relevant_chunk_ids": [
+      814
+    ]
+  },
+  {
+    "question": "What crystal frequency does the USB bootloader require?",
+    "expected_answer": "12MHz crystal or 12MHz clock input",
+    "source_doc": "RP2040-datasheet.pdf",
+    "chunk_ids": [
+      330
+    ],
+    "relevant_chunk_ids": []
+  },
+  {
+    "question": "What happens to the RUN pin if no external reset is required?",
+    "expected_answer": "It can be tied directly to IOVDD",
+    "source_doc": "RP2040-datasheet.pdf",
+    "chunk_ids": [
+      330
+    ],
+    "relevant_chunk_ids": []
+  },
+  {
+    "question": "What manufacturing process node is the RP2040 built on?",
+    "expected_answer": "40nm",
+    "source_doc": "RP2040-datasheet.pdf",
+    "chunk_ids": [
+      327
+    ],
+    "relevant_chunk_ids": [
+      63
+    ]
+  },
+  {
+    "question": "What package is shown in the RP2040 pinout diagram?",
+    "expected_answer": "QFN-56, 7x7mm with reduced ePad size",
+    "source_doc": "RP2040-datasheet.pdf",
+    "chunk_ids": [
+      330
+    ],
+    "relevant_chunk_ids": [
+      66
+    ]
+  },
+  {
+    "question": "What does XIN also function as if XOUT is disconnected?",
+    "expected_answer": "A single-ended CMOS clock input",
+    "source_doc": "RP2040-datasheet.pdf",
+    "chunk_ids": [
+      330
+    ],
+    "relevant_chunk_ids": []
+  },
+  {
+    "question": "What bus fabric connects the RP2040's processor cores, DMA, memory and peripherals?",
+    "expected_answer": "AHB/APB bus fabric",
+    "source_doc": "RP2040-datasheet.pdf",
+    "chunk_ids": [
+      328
+    ],
+    "relevant_chunk_ids": [
+      73
+    ]
+  },
+  {
+    "question": "Does the RP2040 have onboard non-volatile flash storage?",
+    "expected_answer": "No, it is a stateless device that supports cached execute-in-place from external QSPI memory",
+    "source_doc": "RP2040-datasheet.pdf",
+    "chunk_ids": [
+      327
+    ],
+    "relevant_chunk_ids": [
+      63
+    ]
+  }
+]
