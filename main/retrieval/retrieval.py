@@ -36,17 +36,21 @@ def run_retrieval(query):
             return row["text"]
 
     if isinstance(query, str):
+        # building the bm_25 index
         bm25_index, bm25_ids = load_bm25_indexing()
         tokenized_query = query.split(" ")
         bm25_match_ids = bm25.get_scores(tokenized_query)
         ranked = sorted(zip(bm25_chunk_ids, scores), key=lambda x: x[1], reverse=True)
         top_ids = [chunk_id for chunk_id, score in ranked[:k]]
+        # seraching the userach index
         usearch_match_ids = search(query)
         chunks = []
         source_docs = []
         pages = []
+        # create a unified id index, combining results from bm25 and vector search into one using a reciprocal_rank_fusion
+        match_ids = reciprocal_rank_fusion(usearch_match_ids, top_ids)
         # find chunks in db
-        for id in usearch_match_ids:
+        for id in match_ids:
             row = cur.execute(
                 "SELECT * FROM chunk_records WHERE chunk_id = ?", (id,)
             ).fetchone()
