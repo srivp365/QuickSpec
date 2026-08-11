@@ -17,7 +17,7 @@ def run_generation(chunks, question):
                     {"content": f"You are answering questions about this document. Use ONLY the context below. If the answer is not contained in the context, say you don't know. Use the least amount of tokens when possible!\n\nContext: {context}\n", "role": "system"},
                     {"content": f"{question}", "role": "user"},
                 ],
-                model="openrouter/free",
+                model="google/gemini-2.5-flash-lite",
                 stream=True,
             )
 

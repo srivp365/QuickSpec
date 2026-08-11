@@ -7,7 +7,7 @@
       328
     ],
     "relevant_chunk_ids": [
-      64
+      15
     ]
   },
   {
@@ -18,7 +18,8 @@
       328
     ],
     "relevant_chunk_ids": [
-      64
+      15,
+      691
     ]
   },
   {
@@ -29,7 +30,7 @@
       328
     ],
     "relevant_chunk_ids": [
-      211
+      467
     ]
   },
   {
@@ -40,7 +41,7 @@
       328
     ],
     "relevant_chunk_ids": [
-      63
+      15
     ]
   },
   {
@@ -51,7 +52,7 @@
       328
     ],
     "relevant_chunk_ids": [
-      64
+      15
     ]
   },
   {
@@ -62,8 +63,8 @@
       328
     ],
     "relevant_chunk_ids": [
-      64,
-      745
+      2211,
+      2213
     ]
   },
   {
@@ -74,7 +75,7 @@
       328
     ],
     "relevant_chunk_ids": [
-      64
+      15
     ]
   },
   {
@@ -85,7 +86,7 @@
       330
     ],
     "relevant_chunk_ids": [
-      814
+      18
     ]
   },
   {
@@ -95,7 +96,10 @@
     "chunk_ids": [
       330
     ],
-    "relevant_chunk_ids": []
+    "relevant_chunk_ids": [
+      18,
+      844
+    ]
   },
   {
     "question": "What happens to the RUN pin if no external reset is required?",
@@ -104,7 +108,9 @@
     "chunk_ids": [
       330
     ],
-    "relevant_chunk_ids": []
+    "relevant_chunk_ids": [
+      18
+    ]
   },
   {
     "question": "What manufacturing process node is the RP2040 built on?",
@@ -114,7 +120,7 @@
       327
     ],
     "relevant_chunk_ids": [
-      63
+      14
     ]
   },
   {
@@ -125,7 +131,8 @@
       330
     ],
     "relevant_chunk_ids": [
-      66
+      17,
+      2366
     ]
   },
   {
@@ -135,7 +142,9 @@
     "chunk_ids": [
       330
     ],
-    "relevant_chunk_ids": []
+    "relevant_chunk_ids": [
+      18
+    ]
   },
   {
     "question": "What bus fabric connects the RP2040's processor cores, DMA, memory and peripherals?",
@@ -145,7 +154,8 @@
       328
     ],
     "relevant_chunk_ids": [
-      73
+      30,
+      31
     ]
   },
   {
@@ -156,7 +166,7 @@
       327
     ],
     "relevant_chunk_ids": [
-      63
+      14
     ]
   }
 ]

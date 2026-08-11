@@ -1,7 +1,8 @@
 import sqlite3
 
 import onnxruntime as ort
-from sentence_transformers import SentenceTransformer
+from rank_bm25 import BM25Okapi
+from sentence_transformers import CrossEncoder, SentenceTransformer
 from usearch.index import Index
 
 # consts used for model quantization
@@ -11,6 +12,10 @@ CHUNK_OVERLAP = 100
 TOP_K = 10
 RERANK_TOP_K = 5
 RRF_K = 60
+
+
+def load_reranker():
+    return CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
 
 def load_model():
@@ -37,7 +42,16 @@ def load_model():
 
 
 def load_index():
-    index = Index.restore("data/db/index.usearch")
+    # index = Index.restore("data/db/index.usearch")
+    # code used to make initial index
+    index = Index(
+        ndim=384,  # Define the number of dimensions in for a single input vectors (i was passing in the shape of the numpy array produced from an embedding 🤦)
+        metric="cos",  # Choose 'l2sq', 'ip', 'haversine' or other metric, default = 'cos'
+        dtype="f32",  # Quantize to 'f16', 'e5m2', 'e4m3', 'e3m2', 'e2m3', 'u8', 'i8', 'b1'..., default = None
+        connectivity=16,  # How frequent should the connections in the graph be, optional
+        expansion_add=128,  # Control the recall of indexing, optional
+        expansion_search=64,  # Control the quality of search, optional
+    )
     return index
 
 
