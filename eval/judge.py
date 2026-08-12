@@ -31,6 +31,7 @@ def recall_at_k(retrieved_ids, relevant_ids, k=5):
     return hits / len(relevant_ids) if relevant_ids else 0
 
 
+
 def reciprocal_rank(retrieved_ids, relevant_ids):
     for i, rid in enumerate(retrieved_ids):
         if rid in relevant_ids:
@@ -57,7 +58,6 @@ def run_eval(eval_set_path, search_fn, get_chunks_fn, generate_fn, judge_fn, k=5
     p_at_k, mrrs, gen_correct = [], [], []
 
     for qa in eval_set:
-        recall = 0
         # print(f"This is the question from inside run_eval {qa['question']}")
         retrieved_ids = search_fn("hybrid_reranked", qa["question"])
         relevant_ids = qa["relevant_chunk_ids"]

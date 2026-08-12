@@ -70,7 +70,7 @@ def get_usearch_ids(query, k):
     model = load_model()
 
     instruction = "Represent this sentence for searching relevant passages: "
-    query_embedding = model.encode(f"{instruction}{query}")
+    query_embedding = model.encode(f"{instruction}{query}", normalize_embeddings=True)
 
 
     # find vector matches

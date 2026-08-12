@@ -53,15 +53,16 @@ def looks_like_toc(text: str) -> bool:
 
 
 def split_table_and_prose(text: str) -> list[tuple[str, str]]:
-    """Splits page text into alternating (block_type, block_text) segments,
-    where block_type is 'table' or 'prose'. Detects tables via markdown
-    pipe-syntax lines (pymupdf4llm's default table rendering)."""
     lines = text.split("\n")
     blocks = []
     current_block = []
     current_type = None
+    active_header = ""
 
     for line in lines:
+        if re.match(r"^#{1,6}\s+", line.strip()):
+            active_header = line.strip()
+
         is_table_line = line.strip().startswith("|")
         line_type = "table" if is_table_line else "prose"
 
@@ -69,17 +70,22 @@ def split_table_and_prose(text: str) -> list[tuple[str, str]]:
             current_type = line_type
 
         if line_type != current_type:
-            blocks.append((current_type, "\n".join(current_block)))
+            block_content = "\n".join(current_block)
+            if current_type == "table" and active_header:
+                block_content = f"{active_header}\n{block_content}"
+            blocks.append((current_type, block_content))
             current_block = []
             current_type = line_type
 
         current_block.append(line)
 
     if current_block:
-        blocks.append((current_type, "\n".join(current_block)))
+        block_content = "\n".join(current_block)
+        if current_type == "table" and active_header:
+            block_content = f"{active_header}\n{block_content}"
+        blocks.append((current_type, block_content))
 
     return blocks
-
 
 def chunk_large_table(table_text: str, max_rows_per_chunk: int = 15) -> list[str]:
     """Splits an oversized table into row-group chunks, repeating the
