@@ -26,7 +26,7 @@ def ask(question):
     t0 = time.perf_counter()
     chunks, source_docs, pages = run_retrieval(question)
     t1 = time.perf_counter()
-    run_generation(chunks, question)
+    run_generation(chunks, source_docs, pages, question)
     t2 = time.perf_counter()
 
     print("\n \n This answer is based on the following context: ")

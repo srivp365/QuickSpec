@@ -1,5 +1,5 @@
 from usearch.index import Matches
-
+import re
 from main.config import (
     load_bm25_indexing,
     load_db,
@@ -17,23 +17,24 @@ from main.config import (
 query = "What is the best bar for Engineering Students?"
 
 
-def search(method, query, k=20):
+def search(method, query, k=50):
     if method == "usearch":
         return get_usearch_ids(query, k)
     if method == "bm25":
         return get_bm25_ids(query, k)
     if method == "hybrid":
-        usearch_match_ids = get_usearch_ids(query)
+        usearch_match_ids = get_usearch_ids(query, k)
         bm_25_ids = get_bm25_ids(query, k)
         return reciprocal_rank_fusion(usearch_match_ids, bm_25_ids)[:k]
     if method == "db":
-        return get_db_entries(query)
+        return get_chunks(query)
     if method == "hybrid_reranked":
-        usearch_match_ids = get_usearch_ids(query)
-        bm_25_ids = get_bm25_ids(query, k)
+        candidate_pool_size = 50
+        usearch_match_ids = get_usearch_ids(query, candidate_pool_size)
+        bm_25_ids = get_bm25_ids(query, candidate_pool_size)
         fused = reciprocal_rank_fusion(usearch_match_ids, bm_25_ids)[
             :k
-        ]  # top 20 candidates
+        ]  # top 50 candidates
         return rerank(query, fused, top_k=5)  # rescored down to top 5
 
 
@@ -57,21 +58,23 @@ def get_bm25_ids(query, k):
     _, cur = load_db()
     # building the bm_25 index
     bm25_index, bm25_ids = load_bm25_indexing(cur)
-    tokenized_query = query.split(" ")
+    tokenized_query = re.findall(r"\w+", query.lower())
     scores = bm25_index.get_scores(tokenized_query)
     ranked = sorted(zip(bm25_ids, scores), key=lambda x: x[1], reverse=True)
     top_ids = [chunk_id for chunk_id, score in ranked[:k]]
     return top_ids
 
 
-def get_usearch_ids(query):
+def get_usearch_ids(query, k):
     index = load_index()
     model = load_model()
 
-    query_embedding = model.encode(query)
+    instruction = "Represent this sentence for searching relevant passages: "
+    query_embedding = model.encode(f"{instruction}{query}")
+
 
     # find vector matches
-    matches: Matches = index.search(query_embedding, count=10).to_list()
+    matches: Matches = index.search(query_embedding, count=k).to_list()
     match_ids = [match[0] for match in matches]
     # print(f"This is match_ids: {match_ids}")
     return match_ids
@@ -91,7 +94,7 @@ def get_chunks(chunk_ids: list[int]):
 
 def run_retrieval(query):
     _, cur = load_db()
-    match_ids = search("hybrid", query)
+    match_ids = search("hybrid_reranked", query)
     chunks = []
     source_docs = []
     pages = []

@@ -50,18 +50,19 @@ def llm_judge(expected_answer, generated_answer, judge_fn):
     return response.strip().upper().startswith("YES")
 
 
-def run_eval(eval_set_path, search_fn, get_chunks_fn, generate_fn, judge_fn, k=5):
+def run_eval(eval_set_path, search_fn, get_chunks_fn, generate_fn, judge_fn, k=50):
     with open(eval_set_path) as f:
         eval_set = json.load(f)
 
     p_at_k, mrrs, gen_correct = [], [], []
 
     for qa in eval_set:
+        recall = 0
         # print(f"This is the question from inside run_eval {qa['question']}")
         retrieved_ids = search_fn("hybrid_reranked", qa["question"])
         relevant_ids = qa["relevant_chunk_ids"]
         # print(f"this is retrieved: {retrieved_ids} and this is relevant {relevant_ids}")
-
+        recall = recall_at_k(retrieved_ids, relevant_ids)
         p_at_k.append(precision_at_k(retrieved_ids, relevant_ids, k))
         mrrs.append(reciprocal_rank(retrieved_ids, relevant_ids))
         # print(f"This is retrieved chunks!: {retrieved_ids[:k]}")
@@ -73,7 +74,7 @@ def run_eval(eval_set_path, search_fn, get_chunks_fn, generate_fn, judge_fn, k=5
         print(f"Q: {qa['question'][:50]}\nJUDGE RAW OUTPUT: {raw_response}\n")
 
     return {
-        f"precision@{k}": sum(p_at_k) / len(p_at_k),
+        f"recall@{k}": {recall},
         "mrr": sum(mrrs) / len(mrrs),
         "gen_accuracy": sum(gen_correct) / len(gen_correct),
     }
@@ -103,7 +104,7 @@ def judge(expected_answer, generated_answer):
 
     print(
         f"RAW MODEL TEXT: {response_text!r}"
-    )  # <-- actual diagnostic, not the parsed bool
+    )
     return str(response_text).strip().upper().startswith("YES")
 
 
