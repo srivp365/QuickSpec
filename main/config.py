@@ -4,6 +4,11 @@ import onnxruntime as ort
 from rank_bm25 import BM25Okapi
 from sentence_transformers import CrossEncoder, SentenceTransformer
 from usearch.index import Index
+import onnxruntime as ort
+from optimum.onnxruntime import ORTModelForSequenceClassification
+from transformers import AutoTokenizer
+
+
 
 # consts used for model quantization
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
@@ -14,8 +19,51 @@ RERANK_TOP_K = 5
 RRF_K = 60
 
 
+
+
+# helps load the optimized .onnx crossencoder model
+class ONNXCrossEncoder:
+    def __init__(self, model_dir: str, file_name: str):
+        # Match the thread management you used for your embedding model
+        session_options = ort.SessionOptions()
+        session_options.intra_op_num_threads = 4
+        session_options.inter_op_num_threads = 1
+
+        # Load tokenizer and ONNX model from the local directory
+        self.tokenizer = AutoTokenizer.from_pretrained(model_dir)
+        self.model = ORTModelForSequenceClassification.from_pretrained(
+            model_dir,
+            file_name=file_name,
+            session_options=session_options,
+            provider="CPUExecutionProvider"
+        )
+
+    def predict(self, pairs):
+        # Tokenize the [query, text] pairs
+        inputs = self.tokenizer(
+            pairs,
+            padding=True,
+            truncation=True,
+            max_length=512,
+            return_tensors="pt"
+        )
+
+        # Run inference
+        outputs = self.model(**inputs)
+
+        # Extract logits and flatten to a 1D array to perfectly match the original API
+        return outputs.logits.detach().cpu().numpy().flatten()
+
+
+
 def load_reranker():
-    return CrossEncoder("ms-marco-MiniLM-L-6-v2")
+    return ONNXCrossEncoder(
+            model_dir="data/model/reranker_onnx",
+            file_name="model_quantized.onnx"
+        )
+
+
+
 
 
 def load_model():

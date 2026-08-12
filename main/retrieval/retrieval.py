@@ -83,13 +83,17 @@ def get_usearch_ids(query, k):
 def get_chunks(chunk_ids: list[int]):
     _, cur = load_db()
     chunks = []
+    source_page = []
+    page_number = []
     for chunk_id in chunk_ids:
         row = cur.execute(
             "SELECT * FROM chunk_records WHERE chunk_id = ?", (chunk_id,)
         ).fetchone()
         if row:
             chunks.append(row["text"])
-    return chunks
+            source_page.append(row["source_doc"])
+            page_number.append(row["page_number"])
+    return chunks, source_page, page_number
 
 
 def run_retrieval(query):
