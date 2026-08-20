@@ -1,34 +1,18 @@
 import os
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
+from typing import Any, List, Tuple
+
 import fitz
-import pymupdf4llm
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from tqdm import tqdm
 
-from main.config import load_bm25_indexing, load_db, load_index, load_model
-
-
-@dataclass
-class Page_Chunk:
-    text: str
-    source_doc: str
-    page_number: int
-    page_count: int
-    title: str = ""
-    author: str = ""
-
-    @classmethod
-    def from_pumupdf_to_page(cls, raw: dict) -> Page_Chunk:
-        metadata = raw["metadata"]
-        return cls(
-            text=raw["text"],
-            source_doc=metadata["file_path"],
-            page_number=metadata["page_number"],
-            page_count=metadata["page_count"],
-            title=metadata.get("title", ""),
-            author=metadata.get("author", ""),
-        )
+from main.config import (
+    CHUNK_OVERLAP,
+    CHUNK_SIZE,
+    load_db,
+    load_index,
+    load_model,
+)
 
 
 @dataclass
@@ -40,31 +24,24 @@ class Chunk:
     chunk_type: str = "prose"
 
 
-model = load_model()
-index = load_index()
-conn, cur = load_db()
-
-
 def looks_like_toc(text: str) -> bool:
-    """Heuristic: table-of-contents entries use dot-leader sequences
-    (". . . . .") to connect a heading to its page number."""
-    dot_leader_count = len(re.findall(r"\. \. \. \.", text))
-    return dot_leader_count > 3  # tune threshold based on false positive/negative rate
+    """Heuristic: table-of-contents entries use dot-leader sequences."""
+    return len(re.findall(r"\. \. \. \.", text)) > 3
 
 
-def split_table_and_prose(text: str) -> list[tuple[str, str]]:
+def split_table_and_prose(text: str) -> List[Tuple[str, str]]:
     lines = text.split("\n")
-    blocks = []
-    current_block = []
-    current_type = None
+    blocks: List[Tuple[str, str]] = []
+    current_block: List[str] = []
+    current_type: str | None = None
     active_header = ""
 
     for line in lines:
-        if re.match(r"^#{1,6}\s+", line.strip()):
-            active_header = line.strip()
+        stripped = line.strip()
+        if re.match(r"^#{1,6}\s+", stripped):
+            active_header = stripped
 
-        is_table_line = line.strip().startswith("|")
-        line_type = "table" if is_table_line else "prose"
+        line_type = "table" if stripped.startswith("|") else "prose"
 
         if current_type is None:
             current_type = line_type
@@ -87,21 +64,19 @@ def split_table_and_prose(text: str) -> list[tuple[str, str]]:
 
     return blocks
 
-def chunk_large_table(table_text: str, max_rows_per_chunk: int = 15) -> list[str]:
-    """Splits an oversized table into row-group chunks, repeating the
-    header row (and separator row) in every resulting piece."""
+
+def chunk_large_table(table_text: str, max_rows_per_chunk: int = 15) -> List[str]:
     lines = table_text.strip().split("\n")
     if len(lines) <= 2:
         return [table_text]
 
-    header = lines[:2]  # header row + markdown separator row (|---|---|)
+    header = lines[:2]
     body = lines[2:]
 
-    chunks = []
-    for i in range(0, len(body), max_rows_per_chunk):
-        chunk_lines = header + body[i : i + max_rows_per_chunk]
-        chunks.append("\n".join(chunk_lines))
-    return chunks
+    return [
+        "\n".join(header + body[i : i + max_rows_per_chunk])
+        for i in range(0, len(body), max_rows_per_chunk)
+    ]
 
 
 def build_chunks_for_page(
@@ -109,14 +84,10 @@ def build_chunks_for_page(
     page_number: int,
     source_doc: str,
     chunk_id_start: int,
-    text_splitter,
-    Chunk,
+    text_splitter: RecursiveCharacterTextSplitter,
     large_table_token_threshold: int = 600,
-) -> tuple[list, int]:
-    """Runs table-aware chunking on one page's text. Returns (chunks, next_chunk_id).
-    Table blocks are kept whole (or split by row-group if oversized);
-    prose blocks go through the normal text_splitter unchanged."""
-    all_chunks = []
+) -> Tuple[List[Chunk], int]:
+    all_chunks: List[Chunk] = []
     chunk_id = chunk_id_start
 
     for block_type, block_text in split_table_and_prose(page_text):
@@ -126,10 +97,11 @@ def build_chunks_for_page(
         if block_type == "table":
             if looks_like_toc(block_text):
                 continue
-            if len(block_text) > large_table_token_threshold:
-                table_pieces = chunk_large_table(block_text)
-            else:
-                table_pieces = [block_text]
+            table_pieces = (
+                chunk_large_table(block_text)
+                if len(block_text) > large_table_token_threshold
+                else [block_text]
+            )
 
             for piece in table_pieces:
                 all_chunks.append(
@@ -157,68 +129,59 @@ def build_chunks_for_page(
 
     return all_chunks, chunk_id
 
+def run_ingestion(file: str) -> None:
+    model = load_model()
+    index = load_index()
+    conn, cur = load_db()
 
-def get_files(file_path):
-    # get all files from a folder and run ingestion on each one before adding it to a db
-    with os.scandir(file_path) as entries:
-        files = [entry.name for entry in entries if entry.is_file()]
-    for f in files:
-        print(f"\n \n This is the file: {f} \n \n")
-        file = f"{file_path}/{f}"
-        run_ingestion(model, index, conn, cur, file)
-    load_bm25_indexing(cur)
-
-
-def run_ingestion(model, index, conn, cur, file):
     text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
-        encoding_name="cl100k_base", chunk_size=800, chunk_overlap=100
+        encoding_name="cl100k_base",
+        chunk_size=CHUNK_SIZE,
+        chunk_overlap=CHUNK_OVERLAP,
     )
 
-    x = cur.execute("SELECT MAX(chunk_id) FROM chunk_records ").fetchone()[0]
-    if x is None:
-        x = 0
-
-    rows = []
-    texts = []
-    ids = []
-    chunk_id_counter = x + 1
+    max_id = cur.execute("SELECT MAX(chunk_id) FROM chunk_records").fetchone()[0]
+    chunk_id_counter = (max_id or 0) + 1
 
     doc = fitz.open(file)
-    num_pages = len(doc)
+    total_pages = len(doc)
+
+    rows: List[Tuple[int, str, str, int, str, int]] = []
+    texts: List[str] = []
+    ids: List[int] = []
+
+    console.print(f"[cyan]Extracting & Chunking[/cyan] {os.path.basename(file)} ({total_pages} pages)...")
+    for page_num in range(total_pages):
+        page = doc[page_num]
+        page_text = page.get_text("text")
+
+        if page_text.strip():
+            page_chunks, chunk_id_counter = build_chunks_for_page(
+                page_text=page_text,
+                page_number=page_num + 1,
+                source_doc=file,
+                chunk_id_start=chunk_id_counter,
+                text_splitter=text_splitter,
+            )
+
+            for c in page_chunks:
+                texts.append(c.text)
+                ids.append(c.chunk_id)
+                rows.append(
+                    (
+                        c.chunk_id,
+                        c.text,
+                        c.source_doc,
+                        c.page_number,
+                        c.chunk_type,
+                        total_pages,
+                    )
+                )
+
     doc.close()
 
-    raw_pages = []
-    for page_num in tqdm(range(num_pages), desc=f"Extracting {os.path.basename(file)}"):
-        page_data = pymupdf4llm.to_markdown(
-            file, pages=[page_num], page_chunks=True, use_ocr=False
-        )
-        raw_pages.extend(page_data)
-
-    for raw_page in raw_pages:
-        ps = Page_Chunk.from_pumupdf_to_page(raw_page)
-
-        page_chunks, chunk_id_counter = build_chunks_for_page(
-            page_text=ps.text,
-            page_number=ps.page_number,
-            source_doc=ps.source_doc,
-            chunk_id_start=chunk_id_counter,
-            text_splitter=text_splitter,
-            Chunk=Chunk,
-        )
-
-        for c in page_chunks:
-            texts.append(c.text)
-            ids.append(c.chunk_id)
-            rows.append(
-                (
-                    c.chunk_id,
-                    c.text,
-                    c.source_doc,
-                    c.page_number,
-                    c.chunk_type,
-                    ps.page_count,
-                )
-            )
+    if not rows:
+        return
 
     cur.executemany(
         "INSERT INTO chunk_records (chunk_id, text, source_doc, page_number, chunk_type, page_count) VALUES (?,?,?,?,?,?)",
@@ -226,8 +189,12 @@ def run_ingestion(model, index, conn, cur, file):
     )
     conn.commit()
 
+    console.print(f"[magenta]Embedding[/magenta] {len(texts)} chunks from {os.path.basename(file)}...")
     embeddings = model.encode(
-        texts, batch_size=64, show_progress_bar=True, normalize_embeddings=True
+        texts,
+        batch_size=32,
+        show_progress_bar=True,
+        normalize_embeddings=True,
     )
     index.add(ids, embeddings)
     index.save("data/db/index.usearch")

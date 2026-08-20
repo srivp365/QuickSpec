@@ -2,11 +2,12 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
+from typing import Any
 
 console = Console()
 
 
-def render_answer_panel(question: str, answer: str, sources: list[dict]):
+def render_answer_panel(question: str, answer: str, sources: list[dict[str, Any]]) -> None:
     """sources: list of dicts with keys 'source_doc', 'page_number', 'text'"""
     console.print(Panel(answer, title=f"[bold cyan]{question}[/bold cyan]", border_style="cyan"))
 
@@ -15,15 +16,16 @@ def render_answer_panel(question: str, answer: str, sources: list[dict]):
         table.add_column("Doc", style="dim")
         table.add_column("Page", justify="right")
         table.add_column("Preview")
+        sliced_sources = sources[:3]
 
-        for s in sources:
+        for s in sliced_sources:
             preview = s["text"][:80].replace("\n", " ") + "..."
             table.add_row(s["source_doc"], str(s["page_number"]), preview)
 
         console.print(table)
 
 
-def render_eval_table(results_by_config: dict[str, dict]):
+def render_eval_table(results_by_config: dict[str, dict[str, float]]) -> None:
     """results_by_config: {"vector": {"precision@5": ..., "mrr": ..., "gen_accuracy": ...}, ...}"""
     table = Table(title="Retrieval Configuration Comparison")
     table.add_column("Config", style="bold")
@@ -43,7 +45,7 @@ def render_eval_table(results_by_config: dict[str, dict]):
     console.print(table)
 
 
-def render_stats_table(stats: dict):
+def render_stats_table(stats: dict[str, Any]) -> None:
     """stats: {'total_chunks': int, 'by_type': {'prose': n, 'table': n}, 'source_docs': [str]}"""
     table = Table(title="Corpus Stats")
     table.add_column("Metric", style="bold")
@@ -64,6 +66,22 @@ def render_stats_table(stats: dict):
         console.print(doc_table)
 
 
+def render_sources_table(sources: list[dict[str, Any]]) -> None:
+    """Renders just the sources table below the streamed answer."""
+    if not sources:
+        return
+
+    table = Table(title="Sources", show_lines=True)
+    table.add_column("Doc", style="dim")
+    table.add_column("Page", justify="right")
+    table.add_column("Preview")
+
+    for s in sources:
+        preview = s["text"][:80].replace("\n", " ") + "..."
+        table.add_row(str(s["source_doc"]), str(s["page_number"]), preview)
+
+    console.print(table)
+
 def make_progress() -> Progress:
     """Rich progress bar matching the style used elsewhere in the CLI.
     Use as: with make_progress() as progress: task = progress.add_task(...); progress.update(task, advance=1)"""
@@ -77,9 +95,9 @@ def make_progress() -> Progress:
     )
 
 
-def print_error(message: str):
+def print_error(message: str) -> None:
     console.print(f"[bold red]Error:[/bold red] {message}")
 
 
-def print_success(message: str):
+def print_success(message: str) -> None:
     console.print(f"[bold green]✓[/bold green] {message}")

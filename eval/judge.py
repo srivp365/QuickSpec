@@ -1,116 +1,137 @@
-# eval set + judge written by Claude Sonnet 5 (verfied by me)
-
 """
-Bare-bones eval harness.
+Advanced Evaluation Harness.
 
-Assumes eval_set.json has been updated so each entry has a
-"relevant_chunk_ids" field (list of int) -- map these in yourself
-by running ingestion, then checking which chunk_id(s) landed on each
-question's "page_number" for its "source_doc".
-
-Wire in your own search(), get_chunks(), and generate() functions
-from your retrieval/generation modules.
+Analyzes RAG performance using:
+1. Retrieval Metrics: Precision@K, Recall@K, MRR (Mean Reciprocal Rank).
+2. Generative Quality: LLM-based semantic faithfulness judge.
+3. Reporting: Breakdown of per-question performance.
 """
 
 import json
 import os
+import statistics
+import time
+from typing import Any, Callable, Dict, List, Tuple
 
 from dotenv import load_dotenv
 from openrouter import OpenRouter
 
-
-def precision_at_k(retrieved_ids, relevant_ids, k=5):
-    retrieved_k = retrieved_ids[:k]
-    hits = len(set(retrieved_k) & set(relevant_ids))
-    return hits / k
-
-
-def recall_at_k(retrieved_ids, relevant_ids, k=5):
-    retrieved_k = retrieved_ids[:k]
-    hits = len(set(retrieved_k) & set(relevant_ids))
-    return hits / len(relevant_ids) if relevant_ids else 0
-
-
-
-def reciprocal_rank(retrieved_ids, relevant_ids):
-    for i, rid in enumerate(retrieved_ids):
-        if rid in relevant_ids:
-            return 1 / (i + 1)
-    return 0
-
-
-def llm_judge(expected_answer, generated_answer, judge_fn):
-    """judge_fn: your OpenRouter call, takes (expected, generated) -> bool"""
-    prompt = (
-        f"Expected answer: {expected_answer}\n"
-        f"Generated answer: {generated_answer}\n"
-        "Does the generated answer correctly convey the expected answer? "
-        "Reply only YES or NO."
-    )
-    response = judge_fn(prompt)
-    return response.strip().upper().startswith("YES")
-
-
-def run_eval(eval_set_path, search_fn, get_chunks_fn, generate_fn, judge_fn, k=50):
-    with open(eval_set_path) as f:
-        eval_set = json.load(f)
-
-    p_at_k, mrrs, gen_correct = [], [], []
-
-    for qa in eval_set:
-        # print(f"This is the question from inside run_eval {qa['question']}")
-        retrieved_ids = search_fn("hybrid_reranked", qa["question"])
-        relevant_ids = qa["relevant_chunk_ids"]
-        # print(f"this is retrieved: {retrieved_ids} and this is relevant {relevant_ids}")
-        recall = recall_at_k(retrieved_ids, relevant_ids)
-        p_at_k.append(precision_at_k(retrieved_ids, relevant_ids, k))
-        mrrs.append(reciprocal_rank(retrieved_ids, relevant_ids))
-        # print(f"This is retrieved chunks!: {retrieved_ids[:k]}")
-        chunks, source_docs, pages = get_chunks_fn(retrieved_ids[:k])
-        # print(f"This is chunks!: {chunks}")
-        answer = generate_fn(chunks, source_docs, pages, qa["question"])
-        gen_correct.append(judge_fn(qa["expected_answer"], answer))
-        raw_response = judge_fn(qa["expected_answer"], answer)
-        print(f"Q: {qa['question'][:50]}\nJUDGE RAW OUTPUT: {raw_response}\n")
-
-    return {
-        f"recall@{k}": {recall},
-        "mrr": sum(mrrs) / len(mrrs),
-        "gen_accuracy": sum(gen_correct) / len(gen_correct),
-    }
-
-
 load_dotenv()
 
 
-def judge(expected_answer, generated_answer):
-    prompt = (
-        f"Expected answer: {expected_answer}\n"
-        f"Generated answer: {generated_answer}\n"
-        "The generated answer may be a short phrase or fragment rather than a full "
-        "sentence -- that's fine and expected. Judge only whether it states the same "
-        "fact as the expected answer, ignoring differences in phrasing, units notation "
-        "(e.g. '27' vs '27 ohms' vs '27Ω' are equivalent), or completeness of explanation. "
-        "Reply only YES or NO."
-    )
+class RAGEvaluator:
+    def __init__(self, model_name: str = "anthropic/claude-haiku-4.5") -> None:
+        self.model_name = model_name
+        self.client = OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY"))
 
-    with OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY")) as open_router:
-        res = open_router.chat.send(
-            messages=[{"content": prompt, "role": "user"}],
-            model="anthropic/claude-haiku-4.5",
-            stream=False,
+    def _llm_judge(
+        self, expected: str, generated: str, max_retries: int = 5
+    ) -> Tuple[bool, str]:
+        prompt = (
+            "You are an expert evaluator. Compare the 'Generated Answer' against the 'Expected Answer'.\n"
+            "Rules:\n"
+            "- Ignore minor phrasing differences.\n"
+            "- Accept equivalent notations (e.g., '10V' == '10 volts').\n"
+            "- If the generated answer contains correct info but adds fluff, rate as YES.\n"
+            "- If the generated answer contradicts or is missing critical specs (e.g., wrong voltage, wrong pin), rate as NO.\n\n"
+            f"Expected Answer: {expected}\n"
+            f"Generated Answer: {generated}\n\n"
+            "Reply with 'YES' or 'NO' followed by a short reason."
         )
-        response_text = res.choices[0].message.content
 
-    print(
-        f"RAW MODEL TEXT: {response_text!r}"
-    )
-    return str(response_text).strip().upper().startswith("YES")
+        for attempt in range(max_retries):
+            try:
+                with OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY")) as client:
+                    res = client.chat.send(
+                        messages=[{"content": prompt, "role": "user"}],
+                        model=self.model_name,
+                        stream=False,
+                    )
+                    response = res.choices[0].message.content.strip()
+                    decision = response.upper().startswith("YES")
+                    return decision, response
+            except Exception as e:
+                wait = 2**attempt
+                print(
+                    f"Rate limited or error ({e}), retrying in {wait}s... ({attempt + 1}/{max_retries})"
+                )
+                time.sleep(wait)
+
+        raise RuntimeError(f"Judge call failed after {max_retries} retries")
+
+    def evaluate(
+        self,
+        eval_set_path: str,
+        search_fn: Callable[[str, str], List[int]],
+        get_chunks_fn: Callable[[List[int]], Tuple[List[str], List[str], List[int]]],
+        generate_fn: Callable[[List[str], List[str], List[int], str], str],
+        k_retrieval: int = 10,
+        delay_between_questions: float = 1.0,
+    ) -> Dict[str, Any]:
+        with open(eval_set_path) as f:
+            eval_set = json.load(f)
+
+        results: List[Dict[str, Any]] = []
+        for qa in eval_set:
+            q = qa["question"]
+            # Support both 'chunk_ids' and 'relevant_chunk_ids' keys
+            relevant = set(qa.get("relevant_chunk_ids", qa.get("chunk_ids", [])))
+
+            # Retrieval
+            retrieved = search_fn("hybrid_reranked", q)
+            top_k = retrieved[:k_retrieval]
+
+            hits = len(set(top_k) & relevant)
+            recall = hits / len(relevant) if relevant else 0
+            precision = hits / k_retrieval
+            mrr = 0
+            for i, rid in enumerate(top_k):
+                if rid in relevant:
+                    mrr = 1 / (i + 1)
+                    break
+
+            # Generation
+            chunks, sources, pages = get_chunks_fn(top_k)
+            answer = generate_fn(chunks, sources, pages, q)
+            is_correct, reason = self._llm_judge(qa["expected_answer"], answer)
+
+            results.append(
+                {
+                    "question": q,
+                    "recall": recall,
+                    "precision": precision,
+                    "mrr": mrr,
+                    "gen_correct": is_correct,
+                    "reason": reason,
+                }
+            )
+            print(f"Evaluated: {q[:50]}... -> Correct: {is_correct}")
+
+            time.sleep(delay_between_questions)
+
+        return self._summarize(results)
+
+    def _summarize(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
+        recalls = [r["recall"] for r in results]
+        precisions = [r["precision"] for r in results]
+        mrrs = [r["mrr"] for r in results]
+        accs = [r["gen_correct"] for r in results]
+
+        return {
+            "avg_recall": statistics.mean(recalls),
+            "avg_precision": statistics.mean(precisions),
+            "mrr": statistics.mean(mrrs),
+            "generative_accuracy": statistics.mean(accs),
+            "details": results,
+        }
 
 
 if __name__ == "__main__":
     from main.generation.generation import run_generation
     from main.retrieval.retrieval import get_chunks, search
 
-    results = run_eval("eval_set.json", search, get_chunks, run_generation, judge)
-    print(results)
+    evaluator = RAGEvaluator()
+    summary = evaluator.evaluate("eval_set.json", search, get_chunks, run_generation)
+
+    print("\n--- Evaluation Summary ---")
+    print(json.dumps(summary, indent=2))
