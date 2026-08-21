@@ -3,7 +3,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, List, Tuple
 from main.paths import INDEX_PATH
-import fitz
+import pymupdf
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from main.config import (
