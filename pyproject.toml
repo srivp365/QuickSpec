@@ -25,3 +25,7 @@ dependencies = [
 
 [project.scripts]
 quickspec = "main.cli:app"
+
+[tool.setuptools.packages.find]
+include = ["main*", "eval*"]
+exclude = ["data*"]
