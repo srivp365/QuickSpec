@@ -143,7 +143,7 @@ def run_ingestion(file: str) -> None:
     max_id = cur.execute("SELECT MAX(chunk_id) FROM chunk_records").fetchone()[0]
     chunk_id_counter = (max_id or 0) + 1
 
-    doc = fitz.open(file)
+    doc = pymupdf.open(file)
     total_pages = len(doc)
 
     rows: List[Tuple[int, str, str, int, str, int]] = []
