@@ -1076,6 +1076,7 @@ name = "quickspec"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "httpx" },
     { name = "langchain-text-splitters" },
     { name = "onnxruntime" },
     { name = "openai" },
@@ -1085,6 +1086,7 @@ dependencies = [
     { name = "pymupdf4llm" },
     { name = "python-dotenv" },
     { name = "rank-bm25" },
+    { name = "requests" },
     { name = "sentence-transformers", extra = ["onnx"] },
     { name = "tiktoken" },
     { name = "tqdm" },
@@ -1094,6 +1096,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "langchain-text-splitters", specifier = ">=1.1.2" },
     { name = "onnxruntime", specifier = ">=1.28.0" },
     { name = "openai", specifier = ">=2.51.0" },
@@ -1103,6 +1106,7 @@ requires-dist = [
     { name = "pymupdf4llm", specifier = ">=1.28.0" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "rank-bm25", specifier = ">=0.2.2" },
+    { name = "requests", specifier = ">=2.34.2" },
     { name = "sentence-transformers", extras = ["onnx"], specifier = ">=5.6.1" },
     { name = "tiktoken", specifier = ">=0.13.0" },
     { name = "tqdm", specifier = ">=4.70.0" },

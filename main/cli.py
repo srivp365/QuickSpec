@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from typing import Any
 import time
@@ -7,21 +6,16 @@ import typer
 from main.config import (
     TOP_K,
     create_schema,
-    delete_bm25_index,
-    load_bm25_indexing,
     load_db,
 )
 from main.display import (
     console,
-    make_progress,
     print_error,
-    print_success,
     render_answer_panel,
     render_stats_table,
     render_sources_table
 )
 from main.generation.generation import run_generation
-from main.indexing.indexing import run_ingestion
 from main.retrieval.retrieval import get_chunks, search
 
 app = typer.Typer(help="QuickSpec: local hybrid RAG over hardware datasheets.")
@@ -34,7 +28,11 @@ def index(folder: Path = typer.Argument(..., help="Folder of PDFs to ingest")) -
     from main.config import delete_bm25_index, load_bm25_indexing
     from main.display import print_success
     from main.indexing.indexing import run_ingestion  # Lazy load heavy PDF/splitters
+    from main.setup_model import ensure_model_ready
+    from main.paths import ensure_app_dirs
 
+    ensure_app_dirs()
+    ensure_model_ready()
     if not folder.is_dir():
         print_error(f"{folder} is not a directory")
         raise typer.Exit(code=1)
@@ -64,11 +62,15 @@ def index(folder: Path = typer.Argument(..., help="Folder of PDFs to ingest")) -
 @app.command()
 def ask(
     question: str = typer.Argument(..., help="Question to ask"),
-    method: str = typer.Option("hybrid_reranked", help="Retrieval method"),
-    k: int = typer.Option(5, help="Number of chunks"),
+    method: str = typer.Option("hybrid", help="Retrieval method"),
+    k: int = typer.Option(TOP_K, help="Number of chunks"),
 ) -> None:
     t0 = time.perf_counter()
 
+    from main.setup_model import ensure_model_ready
+    from main.paths import ensure_app_dirs
+    ensure_app_dirs()
+    ensure_model_ready()
     with console.status(f"[cyan]Retrieving ({method})...[/cyan]"):
         retrieved_ids = search(method, question, k=k)
     t_search = time.perf_counter()
@@ -90,6 +92,7 @@ def ask(
     answer = run_generation(chunk_texts, source_docs, page_numbers, question)
     t_gen_end = time.perf_counter()
 
+    console.print(answer)
     render_sources_table(sources)
 
     console.print(
@@ -102,9 +105,13 @@ def ask(
 
 @app.command()
 def chat(
-    method: str = typer.Option("hybrid_reranked", help="Retrieval method to use"),
+    method: str = typer.Option("hybrid", help="Retrieval method to use"),
     k: int = typer.Option(TOP_K, help="Number of chunks to retrieve"),
 ) -> None:
+    from main.setup_model import ensure_model_ready
+    from main.paths import ensure_app_dirs
+    ensure_app_dirs()
+    ensure_model_ready()
     """Interactive REPL for back-to-back questions."""
     console.print(
         "[bold cyan]QuickSpec chat[/bold cyan] -- type 'exit' or Ctrl+C to quit\n"
