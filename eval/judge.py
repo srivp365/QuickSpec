@@ -15,6 +15,7 @@ from typing import Any, Callable, Dict, List, Tuple
 from main.paths import EVAL_SET_PATH
 from dotenv import load_dotenv
 from openrouter import OpenRouter
+from main.api_key_setup import load_api_key
 
 load_dotenv()
 
@@ -22,7 +23,7 @@ load_dotenv()
 class RAGEvaluator:
     def __init__(self, model_name: str = "anthropic/claude-haiku-4.5") -> None:
         self.model_name = model_name
-        self.client = OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY"))
+        self.client = OpenRouter(api_key=load_api_key())
 
     def _llm_judge(
         self, expected: str, generated: str, max_retries: int = 5
@@ -41,7 +42,7 @@ class RAGEvaluator:
 
         for attempt in range(max_retries):
             try:
-                with OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY")) as client:
+                with OpenRouter(api_key=load_api_key()) as client:
                     res = client.chat.send(
                         messages=[{"content": prompt, "role": "user"}],
                         model=self.model_name,

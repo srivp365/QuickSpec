@@ -1,6 +1,6 @@
 import os
 from typing import List
-
+from main.api_key_setup import load_api_key
 from dotenv import load_dotenv
 from openrouter import OpenRouter
 
@@ -28,7 +28,7 @@ def run_generation(chunks: List[str], source_docs: List[str], pages: List[int], 
     )
 
     full_response = ""
-    with OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY")) as open_router:
+    with OpenRouter(api_key=load_api_key()) as open_router:
         res = open_router.chat.send(
             messages=[
                 {"content": system_prompt, "role": "system"},

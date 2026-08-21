@@ -17,6 +17,9 @@ from main.display import (
 )
 from main.generation.generation import run_generation
 from main.retrieval.retrieval import get_chunks, search
+from main.api_key_setup import ensure_api_key
+from main.setup_model import ensure_model_ready
+from main.paths import ensure_app_dirs
 
 app = typer.Typer(help="QuickSpec: local hybrid RAG over hardware datasheets.")
 
@@ -28,11 +31,11 @@ def index(folder: Path = typer.Argument(..., help="Folder of PDFs to ingest")) -
     from main.config import delete_bm25_index, load_bm25_indexing
     from main.display import print_success
     from main.indexing.indexing import run_ingestion  # Lazy load heavy PDF/splitters
-    from main.setup_model import ensure_model_ready
-    from main.paths import ensure_app_dirs
+
 
     ensure_app_dirs()
     ensure_model_ready()
+    ensure_api_key()
     if not folder.is_dir():
         print_error(f"{folder} is not a directory")
         raise typer.Exit(code=1)
@@ -66,11 +69,10 @@ def ask(
     k: int = typer.Option(TOP_K, help="Number of chunks"),
 ) -> None:
     t0 = time.perf_counter()
-
-    from main.setup_model import ensure_model_ready
-    from main.paths import ensure_app_dirs
     ensure_app_dirs()
     ensure_model_ready()
+    ensure_api_key()
+
     with console.status(f"[cyan]Retrieving ({method})...[/cyan]"):
         retrieved_ids = search(method, question, k=k)
     t_search = time.perf_counter()
@@ -108,10 +110,10 @@ def chat(
     method: str = typer.Option("hybrid", help="Retrieval method to use"),
     k: int = typer.Option(TOP_K, help="Number of chunks to retrieve"),
 ) -> None:
-    from main.setup_model import ensure_model_ready
-    from main.paths import ensure_app_dirs
     ensure_app_dirs()
     ensure_model_ready()
+    ensure_api_key()
+
     """Interactive REPL for back-to-back questions."""
     console.print(
         "[bold cyan]QuickSpec chat[/bold cyan] -- type 'exit' or Ctrl+C to quit\n"
