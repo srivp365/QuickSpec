@@ -12,7 +12,7 @@ import os
 import statistics
 import time
 from typing import Any, Callable, Dict, List, Tuple
-
+from main.paths import EVAL_SET_PATH
 from dotenv import load_dotenv
 from openrouter import OpenRouter
 
@@ -78,12 +78,12 @@ class RAGEvaluator:
             relevant = set(qa.get("relevant_chunk_ids", qa.get("chunk_ids", [])))
 
             # Retrieval
-            retrieved = search_fn("hybrid_reranked", q)
+            retrieved = search_fn("hybrid", q)
             top_k = retrieved[:k_retrieval]
 
             hits = len(set(top_k) & relevant)
             recall = hits / len(relevant) if relevant else 0
-            precision = hits / k_retrieval
+            precision = hits / len(top_k) if top_k else 0
             mrr = 0
             for i, rid in enumerate(top_k):
                 if rid in relevant:
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     from main.retrieval.retrieval import get_chunks, search
 
     evaluator = RAGEvaluator()
-    summary = evaluator.evaluate("eval_set.json", search, get_chunks, run_generation)
+    summary = evaluator.evaluate(str(EVAL_SET_PATH), search, get_chunks, run_generation)
 
     print("\n--- Evaluation Summary ---")
     print(json.dumps(summary, indent=2))

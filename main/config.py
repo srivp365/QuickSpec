@@ -4,6 +4,7 @@ import re
 import pickle
 from functools import lru_cache
 from typing import Tuple, Any
+from main.paths import BM25_PATH, DB_PATH, INDEX_PATH, MODEL_PATH, RERANKER_PATH
 
 # Fast metadata / constants at top level
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
@@ -53,7 +54,7 @@ class ONNXCrossEncoder:
             pairs,
             padding=True,
             truncation=True,
-            max_length=96,
+            max_length=512,
             return_tensors="np",
         )
         outputs = self.model(**inputs)
@@ -63,7 +64,7 @@ class ONNXCrossEncoder:
 @lru_cache(maxsize=1)
 def load_reranker() -> ONNXCrossEncoder:
     return ONNXCrossEncoder(
-        model_dir="data/model/reranker_onnx",
+        model_dir=str(RERANKER_PATH),
         file_name="model_quantized.onnx"
     )
 
@@ -73,7 +74,7 @@ def load_model():
     import onnxruntime as ort
     from sentence_transformers import SentenceTransformer
 
-    MODEL_DIR = "data/model/onnx/"
+    MODEL_DIR = str(MODEL_PATH)
     session_options = ort.SessionOptions()
     session_options.intra_op_num_threads = 4
     session_options.inter_op_num_threads = 1
@@ -93,7 +94,7 @@ def load_model():
 
 
 @lru_cache(maxsize=1)
-def load_index(path: str = "data/db/index.usearch"):
+def load_index(path: str = str(INDEX_PATH)):
     from usearch.index import Index
     if os.path.exists(path):
         return Index.restore(path)
@@ -109,7 +110,7 @@ def load_index(path: str = "data/db/index.usearch"):
 
 @lru_cache(maxsize=1)
 def load_db() -> Tuple[sqlite3.Connection, sqlite3.Cursor]:
-    conn = sqlite3.connect("data/db/chunks.db", check_same_thread=False)
+    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
     cur.execute("PRAGMA journal_mode = WAL;")
@@ -128,7 +129,7 @@ def build_bm25_from_db(cur: sqlite3.Cursor):
 
 
 @lru_cache(maxsize=1)
-def load_bm25_indexing(_cache_key: Any = None, path: str = "data/db/bm25.pkl"):
+def load_bm25_indexing(_cache_key: Any = None, path: str = str(BM25_PATH)):
     if os.path.exists(path):
         with open(path, "rb") as f:
             data = pickle.load(f)
@@ -140,12 +141,12 @@ def load_bm25_indexing(_cache_key: Any = None, path: str = "data/db/bm25.pkl"):
     return bm25_index, bm25_ids
 
 
-def save_bm25_index(bm25_index, bm25_ids: list[int], path: str = "data/db/bm25.pkl") -> None:
+def save_bm25_index(bm25_index, bm25_ids: list[int], path: str = str(BM25_PATH)) -> None:
     with open(path, "wb") as f:
         pickle.dump({"index": bm25_index, "ids": bm25_ids}, f)
 
 
-def delete_bm25_index(path: str = "data/db/bm25.pkl") -> None:
+def delete_bm25_index(path: str = str(BM25_PATH)) -> None:
     if os.path.exists(path):
         os.remove(path)
     load_bm25_indexing.cache_clear()

@@ -47,7 +47,7 @@ def search(method: str, query: str, k: int = TOP_K) -> List[int]:
         return [chunk_id for chunk_id, _ in reranked]
 
 
-def rerank(query: str, candidate_ids: List[int], top_k: int = 10) -> List[Tuple[int, float]]:
+def rerank(query: str, candidate_ids: List[int], top_k: int = 15) -> List[Tuple[int, float]]:
     if not candidate_ids:
         return []
 
@@ -156,7 +156,7 @@ def get_chunks(chunk_ids: List[Union[int, Tuple[int, float]]]) -> Tuple[List[str
 
 
 def run_retrieval(query: str, k: int = TOP_K) -> Tuple[List[str], List[str], List[int]]:
-    """Returns (chunks, source_docs, page_numbers)."""
+    # Returns (chunks, source_docs, page_numbers)
     chunk_ids = search("hybrid_reranked", query, k=k)
     return get_chunks(chunk_ids)
 

@@ -17,8 +17,13 @@ def run_generation(chunks: List[str], source_docs: List[str], pages: List[int], 
     context = "\n\n".join(context_blocks)
 
     system_prompt = (
-        "You are an expert technical documentation assistant. "
-        "Your goal is to answer accurately, referencing only the provided context.\n\n"
+        "You are an expert hardware engineer answering technical queries about datasheets.\n"
+        "Answer the user's question directly, accurately, and exhaustively using ONLY the provided context.\n\n"
+        "Rules for Technical Accuracy:\n"
+        "1. Include all exact numbers, counts (e.g., number of banks, pin counts), sampling rates, and dimensions.\n"
+        "2. Name specific power supply rails directly (e.g., IOVDD, DVDD, ADC_AVDD) rather than generic terms like 'high' or 'power'.\n"
+        "3. Specify exact standard versions (e.g., USB 1.1 PHY vs USB 2.0 compatibility) and peripheral details (e.g., channels, internal sensors).\n"
+        "4. State facts directly without adding unnecessary hypothetical conditionals unless explicitly stated in the context.\n\n"
         f"Context:\n{context}\n"
     )
 
@@ -36,7 +41,7 @@ def run_generation(chunks: List[str], source_docs: List[str], pages: List[int], 
         for chunk in res:
             token = chunk.choices[0].delta.content
             if token:
-                print(token, end="", flush=True)
+                # print(token, end="", flush=True)
                 full_response += token
 
     print()

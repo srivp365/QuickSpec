@@ -2,7 +2,7 @@ import os
 import re
 from dataclasses import dataclass
 from typing import Any, List, Tuple
-
+from main.paths import INDEX_PATH
 import fitz
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
@@ -150,7 +150,7 @@ def run_ingestion(file: str) -> None:
     texts: List[str] = []
     ids: List[int] = []
 
-    console.print(f"[cyan]Extracting & Chunking[/cyan] {os.path.basename(file)} ({total_pages} pages)...")
+    print(f"Extracting & Chunking {os.path.basename(file)} ({total_pages} pages)...")
     for page_num in range(total_pages):
         page = doc[page_num]
         page_text = page.get_text("text")
@@ -189,7 +189,7 @@ def run_ingestion(file: str) -> None:
     )
     conn.commit()
 
-    console.print(f"[magenta]Embedding[/magenta] {len(texts)} chunks from {os.path.basename(file)}...")
+    print(f"Embedding {len(texts)} chunks from {os.path.basename(file)}...")
     embeddings = model.encode(
         texts,
         batch_size=32,
@@ -197,4 +197,4 @@ def run_ingestion(file: str) -> None:
         normalize_embeddings=True,
     )
     index.add(ids, embeddings)
-    index.save("data/db/index.usearch")
+    index.save(str(INDEX_PATH))
