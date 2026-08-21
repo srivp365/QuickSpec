@@ -7,18 +7,18 @@ requires-python = ">=3.14"
 dependencies = [
     "httpx>=0.28.1",
     "langchain-text-splitters>=1.1.2",
+    "numpy>=2.5.1",
     "onnxruntime>=1.28.0",
-    "openai>=2.51.0",
     "openrouter>=1.1.21",
+    "optimum>=2.1.0",
     "platformdirs>=4.11.3",
     "pymupdf>=1.28.0",
-    "pymupdf4llm>=1.28.0",
     "python-dotenv>=1.2.2",
     "rank-bm25>=0.2.2",
-    "requests>=2.34.2",
+    "rich>=15.0.0",
     "sentence-transformers[onnx]>=5.6.1",
-    "tiktoken>=0.13.0",
-    "tqdm>=4.70.0",
+    "tiktoken>=0.14.0",
+    "transformers>=4.57.6",
     "typer>=0.27.0",
     "usearch>=2.26.0",
 ]
@@ -29,3 +29,8 @@ quickspec = "main.cli:app"
 [tool.setuptools.packages.find]
 include = ["main*", "eval*"]
 exclude = ["data*"]
+
+[dependency-groups]
+dev = [
+    "deptry>=0.25.1",
+]
