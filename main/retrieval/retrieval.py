@@ -23,7 +23,6 @@ def _sigmoid(x: float) -> float:
         return 0.0 if x < 0 else 1.0
 
 
-# In main/retrieval/retrieval.py
 def search(method: str, query: str, k: int = TOP_K) -> List[int]:
     if method == "usearch":
         return get_usearch_ids(query, k)
