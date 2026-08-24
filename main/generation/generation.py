@@ -34,8 +34,11 @@ def run_generation(chunks: List[str], source_docs: List[str], pages: List[int], 
                 {"content": system_prompt, "role": "system"},
                 {"content": question, "role": "user"},
             ],
-            model="google/gemini-2.5-flash-lite",
+            model="google/gemini-2.0-flash-exp:free",
             stream=True,
+            temperature=0.1,      
+            max_tokens=1024,      
+            top_p=0.95,
         )
 
         for chunk in res:

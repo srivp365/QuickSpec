@@ -21,7 +21,7 @@ load_dotenv()
 
 
 class RAGEvaluator:
-    def __init__(self, model_name: str = "anthropic/claude-haiku-4.5") -> None:
+    def __init__(self, model_name: str = "qwen/qwen-2.5-72b-instruct:free") -> None:
         self.model_name = model_name
         self.client = OpenRouter(api_key=load_api_key())
 
