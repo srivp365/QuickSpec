@@ -114,6 +114,9 @@
 <!-- GETTING STARTED -->
 ## Getting Started
 
+You can run/try the program on this [google colab](https://colab.research.google.com/drive/1wYFFbEt_C8AER1pZf5ilAdj-n97vrzp-?usp=sharing), without installing anything locally! 
+
+The steps below are for local usage/development.
 
 ### Prerequisites
 Have [uv](https://docs.astral.sh/uv/) installed!
